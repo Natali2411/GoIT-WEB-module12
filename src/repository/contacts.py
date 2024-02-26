@@ -10,9 +10,9 @@ from src.schemas import ContactModel
 from src.utils.dates import get_future_dates
 
 
-async def get_contacts(db: Session, firstName: str = None, lastName: str = None,
-                       email: str = None) -> List[Type[Contact]]:
-    conditions = []
+async def get_contacts(db: Session, user_id: int, firstName: str = None,
+                       lastName: str = None, email: str = None) -> List[Type[Contact]]:
+    conditions = [Contact.created_by == user_id]
     if firstName:
         conditions.append(Contact.first_name == firstName)
     if lastName:
@@ -24,23 +24,27 @@ async def get_contacts(db: Session, firstName: str = None, lastName: str = None,
     return contacts
 
 
-async def get_contacts_birthdays(db: Session, days: int) -> List[Type[Contact]]:
+async def get_contacts_birthdays(db: Session, days: int, user_id: int) -> List[Type[
+    Contact]]:
     dates = get_future_dates(days)
     contacts = db.query(Contact).filter(
         (Contact.birthdate.isnot(None)) &
         cast((extract('month', Contact.birthdate)), Integer).in_(dates["month"]) &
-        cast(extract('day', Contact.birthdate), Integer).in_(dates["day"])).all()
+        cast(extract('day', Contact.birthdate), Integer).in_(dates["day"]) &
+        (Contact.created_by == user_id)
+    ).all()
     return contacts
 
 
-async def get_contact(contact_id: int, db: Session) -> Type[Contact] | None:
-    return db.query(Contact).filter(Contact.id == contact_id).first()
+async def get_contact(contact_id: int, db: Session, user_id: int) -> Type[Contact] | None:
+    return db.query(Contact).filter(and_(Contact.id == contact_id, Contact.created_by
+                                         == user_id)).first()
 
 
-async def create_contact(body: ContactModel, db: Session) -> Contact:
+async def create_contact(body: ContactModel, db: Session, user_id: int) -> Contact:
     contact = Contact(first_name=body.first_name, last_name=body.last_name,
                       birthdate=body.birthdate, gender=body.gender,
-                      persuasion=body.persuasion)
+                      persuasion=body.persuasion, created_by=user_id)
     db.add(contact)
     db.commit()
     db.refresh(contact)
@@ -48,8 +52,9 @@ async def create_contact(body: ContactModel, db: Session) -> Contact:
 
 
 async def update_contact(contact_id: int, body: ContactModel,
-                         db: Session) -> Contact | None:
-    contact = db.query(Contact).filter(Contact.id == contact_id).first()
+                         db: Session, user_id: int) -> Contact | None:
+    contact = db.query(Contact).filter(and_(Contact.id == contact_id,
+                                            Contact.created_by == user_id)).first()
     if contact:
         contact.first_name = body.first_name
         contact.last_name = body.last_name
@@ -61,8 +66,9 @@ async def update_contact(contact_id: int, body: ContactModel,
     return contact
 
 
-async def remove_contact(contact_id: int, db: Session) -> Contact | None:
-    contact = db.query(Contact).filter(Contact.id == contact_id).first()
+async def remove_contact(contact_id: int, db: Session, user_id: int) -> Contact | None:
+    contact = db.query(Contact).filter(and_(Contact.id == contact_id,
+                                            Contact.created_by == user_id)).first()
     if contact:
         db.delete(contact)
         db.commit()

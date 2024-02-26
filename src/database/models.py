@@ -2,13 +2,23 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Boolean, func, Table
+from sqlalchemy import Column, Integer, String, func
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.sql.schema import ForeignKey
 from sqlalchemy.sql.sqltypes import DateTime, Date
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
+
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True)
+    email = mapped_column(String(250), nullable=False, unique=True)
+    password = mapped_column(String(255), nullable=False)
+    created_at = mapped_column(DateTime, default=func.now())
+    avatar = mapped_column(String(255), nullable=True)
+    refresh_token = mapped_column(String(1255), nullable=True)
 
 
 class Contact(Base):
@@ -21,6 +31,7 @@ class Contact(Base):
     gender: Mapped[str] = mapped_column(String(1), nullable=False)
     persuasion: Mapped[str] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    created_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
 
     channels = relationship("ContactChannel", backref="contacts",
                             passive_deletes=True)
@@ -40,14 +51,4 @@ class ContactChannel(Base):
     contact_id: Mapped[int] = mapped_column(Integer, ForeignKey("contacts.id"))
     channel_id: Mapped[int] = mapped_column(Integer, ForeignKey("channels.id"))
     channel_value: Mapped[str] = mapped_column(String(250), nullable=False, unique=True)
-
-
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True)
-    username = Column(String(50))
-    email = Column(String(250), nullable=False, unique=True)
-    password = Column(String(255), nullable=False)
-    created_at = Column('crated_at', DateTime, default=func.now())
-    avatar = Column(String(255), nullable=True)
-    refresh_token = Column(String(255), nullable=True)
+    created_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))

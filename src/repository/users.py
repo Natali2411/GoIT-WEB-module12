@@ -1,6 +1,12 @@
+from typing import Type
+
+from fastapi import Depends, HTTPException
+from fastapi_jwt_auth import AuthJWT
 from libgravatar import Gravatar
 from sqlalchemy.orm import Session
+from starlette import status
 
+from src.database.db import get_db
 from src.database.models import User
 from src.schemas import UserModel
 
@@ -26,3 +32,16 @@ async def create_user(body: UserModel, db: Session) -> User:
 async def update_token(user: User, token: str | None, db: Session) -> None:
     user.refresh_token = token
     db.commit()
+
+
+def get_current_user(Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)) -> \
+        Type[User]:
+    Authorize.jwt_required()
+
+    current_user = db.query(User).filter(
+        User.email == Authorize.get_jwt_subject()).first()
+    if current_user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Invalid user credentials")
+
+    return current_user

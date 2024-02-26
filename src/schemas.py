@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from pydantic import BaseModel, Field, PastDate
+from typing import Optional, Sequence
+
+from pydantic import BaseModel, Field, PastDate, EmailStr, validator, StrictStr
 
 
 class ChannelModel(BaseModel):
@@ -22,6 +24,7 @@ class ContactChannelModel(BaseModel):
 
 
 class ContactChannelResponse(ContactChannelModel):
+    created_by: int
     id: int
 
     class Config:
@@ -38,6 +41,7 @@ class ContactModel(BaseModel):
 
 
 class ContactResponse(ContactModel):
+    created_by: int
     id: int
 
     class Config:
@@ -45,14 +49,12 @@ class ContactResponse(ContactModel):
 
 
 class UserModel(BaseModel):
-    username: str = Field(min_length=5, max_length=16)
-    email: str
+    email: EmailStr
     password: str = Field(min_length=6, max_length=10)
 
 
 class UserDb(BaseModel):
     id: int
-    username: str
     email: str
     created_at: datetime
     avatar: str
@@ -67,6 +69,13 @@ class UserResponse(BaseModel):
 
 
 class TokenModel(BaseModel):
-    access_token: str
-    refresh_token: str
+    access_token: str = Field(min_length=5)
+    refresh_token: str = Field(min_length=5)
     token_type: str = "bearer"
+
+
+class Settings(BaseModel):
+    authjwt_secret_key: str = Field(min_length=5,
+                                    default='kajsbdkhagsd123hfj123y5467123')
+    authjwt_algorithm: Optional[StrictStr] = "HS256"
+    authjwt_token_location: Optional[Sequence[StrictStr]] = {'headers'}

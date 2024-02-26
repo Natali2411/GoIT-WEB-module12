@@ -2,20 +2,23 @@ from __future__ import annotations
 
 from typing import Type
 
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from src.database.models import ContactChannel, Channel, Contact
 from src.schemas import ContactChannelModel
 
 
-async def get_contacts_channels(skip: int, limit: int, db: Session) -> list[Type[ContactChannel]]:
-    return db.query(ContactChannel).offset(skip).limit(limit).all()
+async def get_contacts_channels(skip: int, limit: int, db: Session, user_id: int) -> list[Type[ContactChannel]]:
+    return db.query(ContactChannel).filter(ContactChannel.created_by == user_id).offset(skip).limit(limit).all()
 
 
-async def create_contacts_channels(body: ContactChannelModel, db: Session) -> (
+async def create_contacts_channels(body: ContactChannelModel, db: Session, user_id: int) -> (
         ContactChannel | int):
-    contact_channel = db.query(ContactChannel).filter(ContactChannel.channel_value ==
-                                                      body.channel_value).first()
+    contact_channel = db.query(ContactChannel).filter(and_(
+        ContactChannel.channel_value == body.channel_value,
+        ContactChannel.created_by == user_id
+    )).first()
     if contact_channel:
         return 1
     channel = db.query(Channel).filter(Channel.id == body.channel_id).first()
@@ -32,9 +35,10 @@ async def create_contacts_channels(body: ContactChannelModel, db: Session) -> (
         return 2
 
 async def update_contact_channel(contact_channel_id: int, body: ContactChannelModel,
-                                 db: Session) -> [ContactChannel]:
-    contact_channel = db.query(ContactChannel).filter(ContactChannel.id ==
-                                                      contact_channel_id).first()
+                                 db: Session, user_id: int) -> [ContactChannel]:
+    contact_channel = db.query(ContactChannel).filter(and_(
+        ContactChannel.id == contact_channel_id, ContactChannel.created_by == user_id)
+    ).first()
     if contact_channel:
         contact_channel.contact_id = body.contact_id
         contact_channel.channel_id = body.channel_id
@@ -44,8 +48,11 @@ async def update_contact_channel(contact_channel_id: int, body: ContactChannelMo
         return contact_channel
 
 
-async def remove_contact_channel(contact_channel_id: int, db: Session) -> ContactChannel | None:
-    contact_channel = db.query(ContactChannel).filter(ContactChannel.id == contact_channel_id).first()
+async def remove_contact_channel(contact_channel_id: int, db: Session, user_id: int,
+                                 ) -> ContactChannel | None:
+    contact_channel = db.query(ContactChannel).filter(and_(
+        ContactChannel.id == contact_channel_id, ContactChannel.created_by ==
+                                                 user_id)).first()
     if contact_channel:
         db.delete(contact_channel)
         db.commit()

@@ -4,6 +4,8 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.orm import Session
 
 from src.database.db import get_db
+from src.database.models import User
+from src.repository.users import get_current_user
 from src.schemas import ChannelResponse, ChannelModel
 from src.repository import channels as repository_channels
 
@@ -11,13 +13,14 @@ router = APIRouter(prefix='/channels', tags=["channels"])
 
 
 @router.get("/", response_model=List[ChannelResponse])
-async def read_channels(db: Session = Depends(get_db)):
+async def read_channels(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     channels = await repository_channels.get_channels(db)
     return channels
 
 
 @router.get("/{channelId}", response_model=ChannelResponse)
-async def read_channel(channelId: int, db: Session = Depends(get_db)):
+async def read_channel(channelId: int, db: Session = Depends(get_db),
+                       _: User = Depends(get_current_user)):
     channel = await repository_channels.get_channel(channelId, db)
     if channel is None:
         raise HTTPException(
@@ -27,7 +30,8 @@ async def read_channel(channelId: int, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=ChannelResponse)
-async def create_channel(body: ChannelModel, db: Session = Depends(get_db)):
+async def create_channel(body: ChannelModel, db: Session = Depends(get_db),
+                         _: User = Depends(get_current_user)):
     channel = await repository_channels.get_channel_by_name(body.name, db)
     if channel:
         raise HTTPException(
@@ -39,7 +43,8 @@ async def create_channel(body: ChannelModel, db: Session = Depends(get_db)):
 
 @router.put("/{channelId}", response_model=ChannelResponse)
 async def update_channel(channelId: int, body: ChannelModel,
-                         db: Session = Depends(get_db)):
+                         db: Session = Depends(get_db),
+                         _: User = Depends(get_current_user)):
     channel = await repository_channels.update_channel(channelId, body, db)
     if channel is None:
         raise HTTPException(
@@ -49,7 +54,8 @@ async def update_channel(channelId: int, body: ChannelModel,
 
 
 @router.delete("/{channelId}", response_model=ChannelResponse)
-async def delete_channel(channelId: int, db: Session = Depends(get_db)):
+async def delete_channel(channelId: int, db: Session = Depends(get_db),
+                         _: User = Depends(get_current_user)):
     channel = await repository_channels.remove_channel(channelId, db)
     if channel is None:
         raise HTTPException(
